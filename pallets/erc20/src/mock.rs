@@ -1,4 +1,5 @@
 use crate as pallet_erc20;
+use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
 use sp_core::H256;
@@ -49,8 +50,17 @@ impl system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+parameter_types! {
+	pub const Name: &'static str = "Meme Coin";
+	pub const Symbol: &'static str = "MEM";
+	pub const Decimals: u8 = 18;
+}
+
 impl pallet_erc20::Config for Test {
 	type Event = Event;
+	type Name = Name;
+	type Symbol = Symbol;
+	type Decimals = Decimals;
 }
 
 // Build genesis storage according to the mock runtime.

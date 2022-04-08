@@ -24,6 +24,18 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Name of the coin (name() public function of ERC20)
+		#[pallet::constant]
+		type Name: Get<&'static str>;
+
+		/// A symbol (shorter variant of a name) of the coin (symbol() public function of ERC20)
+		#[pallet::constant]
+		type Symbol: Get<&'static str>;
+
+		/// Number of decimals used to get its user representation (decimals() public function of ERC20)
+		#[pallet::constant]
+		type Decimals: Get<u8>;
 	}
 
 	#[pallet::pallet]

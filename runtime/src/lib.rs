@@ -266,9 +266,18 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const Name: &'static str = "Meme Coin";
+	pub const Symbol: &'static str = "MEM";
+	pub const Decimals: u8 = 18;
+}
+
 /// Configure the pallet-erc20 in pallets/erc20.
 impl pallet_erc20::Config for Runtime {
 	type Event = Event;
+	type Name = Name;
+	type Symbol = Symbol;
+	type Decimals = Decimals;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
