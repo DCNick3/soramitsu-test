@@ -1,9 +1,8 @@
 [package]
-name = "pallet-template"
+name = "pallet-erc20"
 version = "4.0.0-dev"
-description = "FRAME pallet template for defining custom runtime logic."
-authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
-homepage = "https://substrate.io/"
+description = "A pallet implementing functionality of ERC20 smart contract (but still being a pallet =))"
+authors = ["DCNick3 <moslike6@gmail.com>"]
 edition = "2021"
 license = "Unlicense"
 publish = false
