@@ -54,7 +54,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn allowance)]
 	pub type Allowance<T: Config> =
-		StorageMap<_, Blake2_128Concat, (T::AccountId, T::AccountId), U256>;
+		StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, T::AccountId, U256>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -95,21 +95,43 @@ pub mod pallet {
 		Overflow,
 		/// TODO
 		InsufficientFunds,
+		InsufficientAllowance,
 	}
 
 	// private (non-dispatchable) functions
 	impl<T: Config> Pallet<T> {
+		fn check_allowance(
+			owner: T::AccountId,
+			spender: T::AccountId,
+			amount: U256,
+		) -> Result<U256, DispatchError> {
+			let allowance = <Allowance<T>>::get(owner, spender).unwrap_or(U256::zero());
+			Ok(allowance.checked_sub(amount).ok_or(Error::<T>::InsufficientAllowance)?)
+		}
+
 		fn transfer_impl(from: T::AccountId, to: T::AccountId, amount: U256) -> DispatchResult {
 			let from_balance = <Balance<T>>::get(&from).unwrap_or(U256::zero());
-			let new_from_balance =
+			let from_balance =
 				from_balance.checked_sub(amount).ok_or(Error::<T>::InsufficientFunds)?;
 			let to_balance = <Balance<T>>::get(&to).unwrap_or(U256::zero());
-			let new_to_balance = to_balance.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+			let to_balance = to_balance.checked_add(amount).ok_or(Error::<T>::Overflow)?;
 
-			<Balance<T>>::insert(&from, new_from_balance);
-			<Balance<T>>::insert(&to, new_to_balance);
+			<Balance<T>>::insert(&from, from_balance);
+			<Balance<T>>::insert(&to, to_balance);
 
 			Self::deposit_event(Event::Transfer { from, to, amount });
+
+			Ok(())
+		}
+
+		fn approve_impl(
+			owner: T::AccountId,
+			spender: T::AccountId,
+			amount: U256,
+		) -> DispatchResult {
+			<Allowance<T>>::insert(&owner, &spender, amount);
+
+			Self::deposit_event(Event::Approval { owner, spender, amount });
 
 			Ok(())
 		}
@@ -123,7 +145,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)] // TODO
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, amount: U256) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			<Pallet<T>>::transfer_impl(owner, to, amount)
+			Self::transfer_impl(owner, to, amount)
 		}
 
 		#[pallet::weight(10_000)] // TODO
@@ -132,7 +154,8 @@ pub mod pallet {
 			spender: T::AccountId,
 			amount: U256,
 		) -> DispatchResult {
-			todo!()
+			let owner = ensure_signed(origin)?;
+			Self::approve_impl(owner, spender, amount)
 		}
 
 		#[pallet::weight(10_000)] // TODO
@@ -142,7 +165,21 @@ pub mod pallet {
 			to: T::AccountId,
 			amount: U256,
 		) -> DispatchResult {
-			todo!()
+			let spender = ensure_signed(origin)?;
+
+			// first - check if there is enough approval
+			let new_approval = Self::check_allowance(from.clone(), spender.clone(), amount)?;
+
+			// then try to transfer (and therefore check the balance)
+			Self::transfer_impl(from.clone(), to, amount)?;
+
+			// finally - spend the approval
+			Self::approve_impl(from, spender, new_approval)?;
+
+			// using some type to accumulate side-effects and then apply them in one step would be more "beautiful" and composable
+			// but this works good enough when we need to track only two preconditions
+
+			Ok(())
 		}
 	}
 }
