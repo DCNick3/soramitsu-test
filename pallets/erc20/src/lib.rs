@@ -159,6 +159,16 @@ pub mod pallet {
 			let from_balance = <Balance<T>>::get(&from).unwrap_or(U256::zero());
 			let from_balance =
 				from_balance.checked_sub(amount).ok_or(Error::<T>::InsufficientFunds)?;
+
+			// check for this corner case early (otherwise we would dupe tokens)
+			if from == to {
+				// no need to update balance in storage, this transfer should be an identity
+
+				Self::deposit_event(Event::Transfer { from, to, amount });
+
+				return Ok(());
+			}
+
 			let to_balance = <Balance<T>>::get(&to).unwrap_or(U256::zero());
 			let to_balance = to_balance.checked_add(amount).ok_or(Error::<T>::Overflow)?;
 

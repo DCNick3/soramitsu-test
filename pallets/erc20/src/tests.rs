@@ -30,6 +30,27 @@ fn test_transfer() {
 }
 
 #[test]
+fn test_self_transfer() {
+	// a tricky corner case: transfer of tokens with `from` and `to` accounts being the same
+
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+
+		assert_ok!(Erc20::transfer(Origin::signed(1), 1, 10.into()));
+
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![mock::Event::from(crate::Event::Transfer { from: 1, to: 1, amount: 10.into() }),]
+		);
+	});
+}
+
+#[test]
 fn test_transfer_no_funds() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Erc20::balance_of(1), Some(110.into()));
@@ -99,6 +120,40 @@ fn test_allowance() {
 					owner: 1,
 					spender: 0,
 					amount: 0.into()
+				}),
+			]
+		);
+	});
+}
+
+#[test]
+fn test_allowance_self_transfer() {
+	// a tricky corner case: transfer of tokens with `from` and `to` accounts being the same
+
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+
+		assert_ok!(Erc20::approve(Origin::signed(1), 1, 100.into()));
+		assert_ok!(Erc20::transfer_from(Origin::signed(1), 1, 1, 10.into()));
+
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![
+				mock::Event::from(crate::Event::Approval {
+					owner: 1,
+					spender: 1,
+					amount: 100.into()
+				}),
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 1, amount: 10.into() }),
+				mock::Event::from(crate::Event::Approval {
+					owner: 1,
+					spender: 1,
+					amount: 90.into()
 				}),
 			]
 		);
