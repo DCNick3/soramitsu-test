@@ -236,7 +236,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Moves `amount` tokens from the caller’s account to `to`.
 		/// Emits a `Transfer` event.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::DbWeight::get().reads_writes(2, 3) + 20_000)]
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, amount: U256) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			Self::transfer_impl(owner, to, amount)
@@ -244,7 +244,7 @@ pub mod pallet {
 
 		/// Sets `amount` as the allowance of `spender` over the caller’s tokens.
 		/// Emits an `Approval` event.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::DbWeight::get().reads_writes(0, 2) + 20_000)]
 		pub fn approve(
 			origin: OriginFor<T>,
 			spender: T::AccountId,
@@ -259,7 +259,7 @@ pub mod pallet {
 		///
 		/// Emits a `Transfer` event.
 		/// Might emit `Approval` event (if the approval amount is not infinite)
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::DbWeight::get().reads_writes(3, 5) + 20_000)]
 		pub fn transfer_from(
 			origin: OriginFor<T>,
 			from: T::AccountId,
