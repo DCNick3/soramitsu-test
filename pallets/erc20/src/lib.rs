@@ -43,14 +43,18 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+	/// Amount of tokens in existence
 	#[pallet::storage]
 	#[pallet::getter(fn total_supply)]
 	pub type TotalSupply<T> = StorageValue<_, U256>;
 
+	/// Amount of tokens owned by each account
 	#[pallet::storage]
 	#[pallet::getter(fn balance_of)]
 	pub type Balance<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, U256>;
 
+	/// Remaining number of tokens that `spender` (second key)
+	/// 	will be allowed to spend on behalf of `owner` (first key) using transfer_from
 	#[pallet::storage]
 	#[pallet::getter(fn allowance)]
 	pub type Allowance<T: Config> =
@@ -58,7 +62,10 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		/// Initial total supply of tokens
+		/// _should_ be the sum of all balances
 		pub total_supply: U256,
+		/// Initial balances of accounts
 		pub balances: Vec<(T::AccountId, U256)>,
 	}
 
@@ -84,8 +91,39 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Transfer { from: T::AccountId, to: T::AccountId, amount: U256 },
-		Approval { owner: T::AccountId, spender: T::AccountId, amount: U256 },
+		/// Tokens transfer has occurred
+		Transfer {
+			/// The address from which tokens were deducted
+			from: T::AccountId,
+			/// The address to which tokens were sent
+			to: T::AccountId,
+			/// Amount of tokens transferred
+			amount: U256,
+		},
+		/// Approval was updated (either due to owner's request or spender's spending)
+		Approval {
+			/// Account from which tokens are allowed to be spent
+			owner: T::AccountId,
+			/// Account that is authorized to spend tokens
+			spender: T::AccountId,
+			/// Amount of tokens allowed to be spent
+			amount: U256,
+		},
+		// I don't think that there is such a thing as "zero address" in substrate, so these are separate events
+		/// Some amount of tokens is introduced into the system
+		Mint {
+			/// Account which gets the tokens
+			to: T::AccountId,
+			/// Amount of tokens minted
+			amount: U256,
+		},
+		/// Some amount of tokens is destroyed
+		Burn {
+			/// Account from which the tokens are burnt
+			from: T::AccountId,
+			/// Amount of destroyed tokens
+			amount: U256,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -148,12 +186,16 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Moves `amount` tokens from the caller’s account to `to`.
+		/// Emits a `Transfer` event.
 		#[pallet::weight(10_000)] // TODO
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, amount: U256) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			Self::transfer_impl(owner, to, amount)
 		}
 
+		/// Sets `amount` as the allowance of `spender` over the caller’s tokens.
+		/// Emits an `Approval` event.
 		#[pallet::weight(10_000)] // TODO
 		pub fn approve(
 			origin: OriginFor<T>,
@@ -164,6 +206,11 @@ pub mod pallet {
 			Self::approve_impl(owner, spender, amount)
 		}
 
+		/// Moves `amount` tokens from from to to using the allowance mechanism.
+		/// `amount` is then deducted from the caller’s allowance.
+		///
+		/// Emits a `Transfer` event.
+		/// Might emit `Approval` event (if the approval amount is not infinite)
 		#[pallet::weight(10_000)] // TODO
 		pub fn transfer_from(
 			origin: OriginFor<T>,

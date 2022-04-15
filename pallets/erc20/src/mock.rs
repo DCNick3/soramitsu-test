@@ -67,6 +67,8 @@ impl pallet_erc20::Config for Test {
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
+	// due to account 3 having U256::max_value() of tokens the total_supply is actually incorrect
+	// but we don't care for the purpose of testing =)
 	pallet_erc20::GenesisConfig::<Test> {
 		total_supply: U256::from(200),
 		balances: vec![(1, U256::from(110)), (2, U256::from(90)), (3, U256::max_value())],
