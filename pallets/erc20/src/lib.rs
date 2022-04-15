@@ -44,6 +44,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
+	#[pallet::getter(fn total_supply)]
+	pub type TotalSupply<T> = StorageValue<_, U256>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn balance_of)]
 	pub type Balance<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, U256>;
 
@@ -52,9 +56,28 @@ pub mod pallet {
 	pub type Allowance<T: Config> =
 		StorageMap<_, Blake2_128Concat, (T::AccountId, T::AccountId), U256>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn total_supply)]
-	pub type TotalSupply<T> = StorageValue<_, U256>;
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub total_supply: U256,
+		pub balances: Vec<(T::AccountId, U256)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self { total_supply: Default::default(), balances: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			<TotalSupply<T>>::put(&self.total_supply);
+			for (a, b) in &self.balances {
+				<Balance<T>>::insert(a, b);
+			}
+		}
+	}
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors

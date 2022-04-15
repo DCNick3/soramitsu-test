@@ -1,11 +1,12 @@
 use crate as pallet_erc20;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU16, ConstU64};
+use frame_support::traits::{ConstU16, ConstU64, GenesisBuild};
 use frame_system as system;
-use sp_core::H256;
+use sp_core::{H256, U256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -19,7 +20,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
+		Erc20: pallet_erc20::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
 
@@ -27,7 +28,6 @@ impl system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type DbWeight = ();
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
@@ -39,6 +39,7 @@ impl system::Config for Test {
 	type Header = Header;
 	type Event = Event;
 	type BlockHashCount = ConstU64<250>;
+	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = ();
@@ -65,5 +66,16 @@ impl pallet_erc20::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+
+	pallet_erc20::GenesisConfig::<Test> {
+		total_supply: U256::from(200),
+		balances: vec![(1, U256::from(110)), (2, U256::from(90))],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }
