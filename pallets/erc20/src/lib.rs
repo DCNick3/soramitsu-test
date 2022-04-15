@@ -91,10 +91,11 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// TODO
+		/// An overflow occurred when calculating balances
 		Overflow,
-		/// TODO
+		/// "from" account has insufficient funds to perform the transfer
 		InsufficientFunds,
+		/// "spender" account has insufficient allowance to perform the transfer
 		InsufficientAllowance,
 	}
 
@@ -104,9 +105,14 @@ pub mod pallet {
 			owner: T::AccountId,
 			spender: T::AccountId,
 			amount: U256,
-		) -> Result<U256, DispatchError> {
+		) -> Result<Option<U256>, DispatchError> {
 			let allowance = <Allowance<T>>::get(owner, spender).unwrap_or(U256::zero());
-			Ok(allowance.checked_sub(amount).ok_or(Error::<T>::InsufficientAllowance)?)
+
+			// if allowance is U256::max_value - do not spend it
+			if allowance == U256::max_value() {
+				return Ok(None);
+			}
+			Ok(Some(allowance.checked_sub(amount).ok_or(Error::<T>::InsufficientAllowance)?))
 		}
 
 		fn transfer_impl(from: T::AccountId, to: T::AccountId, amount: U256) -> DispatchResult {
@@ -168,13 +174,15 @@ pub mod pallet {
 			let spender = ensure_signed(origin)?;
 
 			// first - check if there is enough approval
-			let new_approval = Self::check_allowance(from.clone(), spender.clone(), amount)?;
+			let new_allowance = Self::check_allowance(from.clone(), spender.clone(), amount)?;
 
 			// then try to transfer (and therefore check the balance)
 			Self::transfer_impl(from.clone(), to, amount)?;
 
-			// finally - spend the approval
-			Self::approve_impl(from, spender, new_approval)?;
+			// finally - spend the allowance (if it's not infinite)
+			if let Some(new_allowance) = new_allowance {
+				Self::approve_impl(from, spender, new_allowance)?;
+			}
 
 			// using some type to accumulate side-effects and then apply them in one step would be more "beautiful" and composable
 			// but this works good enough when we need to track only two preconditions

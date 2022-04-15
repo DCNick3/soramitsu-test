@@ -6,15 +6,15 @@ use sp_core::U256;
 fn test_transfer() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+		assert_eq!(Erc20::balance_of(2), Some(90.into()));
 
-		assert_ok!(Erc20::transfer(Origin::signed(1), 0, U256::from(10)));
-		assert_ok!(Erc20::transfer(Origin::signed(1), 2, U256::from(10)));
+		assert_ok!(Erc20::transfer(Origin::signed(1), 0, 10.into()));
+		assert_ok!(Erc20::transfer(Origin::signed(1), 2, 10.into()));
 
-		assert_eq!(Erc20::balance_of(0), Some(U256::from(10)));
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(90)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(100)));
+		assert_eq!(Erc20::balance_of(0), Some(10.into()));
+		assert_eq!(Erc20::balance_of(1), Some(90.into()));
+		assert_eq!(Erc20::balance_of(2), Some(100.into()));
 
 		assert_eq!(
 			<frame_system::Pallet<Test>>::events()
@@ -22,16 +22,8 @@ fn test_transfer() {
 				.map(|ev| ev.event)
 				.collect::<Vec<_>>(),
 			vec![
-				mock::Event::from(crate::Event::Transfer {
-					from: 1,
-					to: 0,
-					amount: U256::from(10)
-				}),
-				mock::Event::from(crate::Event::Transfer {
-					from: 1,
-					to: 2,
-					amount: U256::from(10)
-				}),
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 0, amount: 10.into() }),
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 2, amount: 10.into() }),
 			]
 		);
 	});
@@ -40,12 +32,10 @@ fn test_transfer() {
 #[test]
 fn test_transfer_no_funds() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
 
 		assert_noop!(
-			Erc20::transfer(Origin::signed(1), 0, U256::from(120)),
+			Erc20::transfer(Origin::signed(1), 0, 120.into()),
 			Error::<Test>::InsufficientFunds
 		);
 
@@ -62,7 +52,7 @@ fn test_transfer_no_funds() {
 #[test]
 fn test_transfer_overflow() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(2), Some(90.into()));
 		assert_eq!(Erc20::balance_of(3), Some(U256::max_value()));
 
 		assert_noop!(
@@ -76,16 +66,16 @@ fn test_transfer_overflow() {
 fn test_allowance() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+		assert_eq!(Erc20::balance_of(2), Some(90.into()));
 
-		assert_ok!(Erc20::approve(Origin::signed(1), 0, U256::from(20)));
-		assert_ok!(Erc20::transfer_from(Origin::signed(0), 1, 0, U256::from(10)));
-		assert_ok!(Erc20::transfer_from(Origin::signed(0), 1, 2, U256::from(10)));
+		assert_ok!(Erc20::approve(Origin::signed(1), 0, 20.into()));
+		assert_ok!(Erc20::transfer_from(Origin::signed(0), 1, 0, 10.into()));
+		assert_ok!(Erc20::transfer_from(Origin::signed(0), 1, 2, 10.into()));
 
-		assert_eq!(Erc20::balance_of(0), Some(U256::from(10)));
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(90)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(100)));
+		assert_eq!(Erc20::balance_of(0), Some(10.into()));
+		assert_eq!(Erc20::balance_of(1), Some(90.into()));
+		assert_eq!(Erc20::balance_of(2), Some(100.into()));
 
 		assert_eq!(
 			<frame_system::Pallet<Test>>::events()
@@ -96,27 +86,19 @@ fn test_allowance() {
 				mock::Event::from(crate::Event::Approval {
 					owner: 1,
 					spender: 0,
-					amount: U256::from(20)
+					amount: 20.into()
 				}),
-				mock::Event::from(crate::Event::Transfer {
-					from: 1,
-					to: 0,
-					amount: U256::from(10)
-				}),
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 0, amount: 10.into() }),
 				mock::Event::from(crate::Event::Approval {
 					owner: 1,
 					spender: 0,
-					amount: U256::from(10)
+					amount: 10.into()
 				}),
-				mock::Event::from(crate::Event::Transfer {
-					from: 1,
-					to: 2,
-					amount: U256::from(10)
-				}),
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 2, amount: 10.into() }),
 				mock::Event::from(crate::Event::Approval {
 					owner: 1,
 					spender: 0,
-					amount: U256::from(0)
+					amount: 0.into()
 				}),
 			]
 		);
@@ -126,17 +108,13 @@ fn test_allowance() {
 #[test]
 fn test_transfer_no_allowance() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
-
-		assert_ok!(Erc20::approve(Origin::signed(1), 0, U256::from(20)));
+		assert_ok!(Erc20::approve(Origin::signed(1), 0, 20.into()));
 		assert_noop!(
-			Erc20::transfer_from(Origin::signed(0), 1, 0, U256::from(30)),
+			Erc20::transfer_from(Origin::signed(0), 1, 0, 30.into()),
 			Error::<Test>::InsufficientAllowance
 		);
 		assert_noop!(
-			Erc20::transfer_from(Origin::signed(0), 1, 2, U256::from(21)),
+			Erc20::transfer_from(Origin::signed(0), 1, 2, 21.into()),
 			Error::<Test>::InsufficientAllowance
 		);
 
@@ -148,7 +126,7 @@ fn test_transfer_no_allowance() {
 			vec![mock::Event::from(crate::Event::Approval {
 				owner: 1,
 				spender: 0,
-				amount: U256::from(20)
+				amount: 20.into()
 			})]
 		);
 	});
@@ -157,17 +135,15 @@ fn test_transfer_no_allowance() {
 #[test]
 fn test_allowance_no_funds() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
 
-		assert_ok!(Erc20::approve(Origin::signed(1), 0, U256::from(120)));
+		assert_ok!(Erc20::approve(Origin::signed(1), 0, 120.into()));
 		assert_noop!(
-			Erc20::transfer_from(Origin::signed(0), 1, 0, U256::from(120)),
+			Erc20::transfer_from(Origin::signed(0), 1, 0, 120.into()),
 			Error::<Test>::InsufficientFunds
 		);
 		assert_noop!(
-			Erc20::transfer_from(Origin::signed(0), 1, 2, U256::from(111)),
+			Erc20::transfer_from(Origin::signed(0), 1, 2, 111.into()),
 			Error::<Test>::InsufficientFunds
 		);
 
@@ -179,7 +155,7 @@ fn test_allowance_no_funds() {
 			vec![mock::Event::from(crate::Event::Approval {
 				owner: 1,
 				spender: 0,
-				amount: U256::from(120)
+				amount: 120.into()
 			})]
 		);
 	});
@@ -188,7 +164,7 @@ fn test_allowance_no_funds() {
 #[test]
 fn test_allowance_overflow() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(2), Some(90.into()));
 		assert_eq!(Erc20::balance_of(3), Some(U256::max_value()));
 
 		assert_ok!(Erc20::approve(Origin::signed(3), 0, U256::max_value()));
@@ -207,6 +183,36 @@ fn test_allowance_overflow() {
 				spender: 0,
 				amount: U256::max_value()
 			})]
+		);
+	});
+}
+
+#[test]
+fn test_unlimited_allowance() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+
+		assert_ok!(Erc20::approve(Origin::signed(1), 0, U256::max_value()));
+		assert_ok!(Erc20::transfer_from(Origin::signed(0), 1, 0, 1.into()));
+		assert_ok!(Erc20::transfer_from(Origin::signed(0), 1, 0, 2.into()));
+
+		assert_eq!(Erc20::allowance(1, 0), Some(U256::max_value()));
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![
+				mock::Event::from(crate::Event::Approval {
+					owner: 1,
+					spender: 0,
+					amount: U256::max_value()
+				}),
+				// notice: no approval updates here (it's unlimited)
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 0, amount: 1.into() }),
+				mock::Event::from(crate::Event::Transfer { from: 1, to: 0, amount: 2.into() })
+			]
 		);
 	});
 }
