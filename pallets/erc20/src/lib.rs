@@ -91,14 +91,29 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Error names should be descriptive.
-		NoneValue,
-		/// Errors should have helpful documentation associated with them.
-		StorageOverflow,
+		/// TODO
+		Overflow,
+		/// TODO
+		InsufficientFunds,
 	}
 
 	// private (non-dispatchable) functions
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		fn transfer_impl(from: T::AccountId, to: T::AccountId, amount: U256) -> DispatchResult {
+			let from_balance = <Balance<T>>::get(&from).unwrap_or(U256::zero());
+			let new_from_balance =
+				from_balance.checked_sub(amount).ok_or(Error::<T>::InsufficientFunds)?;
+			let to_balance = <Balance<T>>::get(&to).unwrap_or(U256::zero());
+			let new_to_balance = to_balance.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+
+			<Balance<T>>::insert(&from, new_from_balance);
+			<Balance<T>>::insert(&to, new_to_balance);
+
+			Self::deposit_event(Event::Transfer { from, to, amount });
+
+			Ok(())
+		}
+	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
 	// These functions materialize as "extrinsics", which are often compared to transactions.
@@ -107,7 +122,8 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)] // TODO
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, amount: U256) -> DispatchResult {
-			todo!()
+			let owner = ensure_signed(origin)?;
+			<Pallet<T>>::transfer_impl(owner, to, amount)
 		}
 
 		#[pallet::weight(10_000)] // TODO
