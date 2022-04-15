@@ -69,7 +69,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	pallet_erc20::GenesisConfig::<Test> {
 		total_supply: U256::from(200),
-		balances: vec![(1, U256::from(110)), (2, U256::from(90))],
+		balances: vec![(1, U256::from(110)), (2, U256::from(90)), (3, U256::max_value())],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();

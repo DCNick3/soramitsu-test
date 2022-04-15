@@ -49,16 +49,25 @@ fn test_transfer_no_funds() {
 			Error::<Test>::InsufficientFunds
 		);
 
-		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
-
 		assert_eq!(
 			<frame_system::Pallet<Test>>::events()
 				.into_iter()
 				.map(|ev| ev.event)
 				.collect::<Vec<_>>(),
 			vec![]
+		);
+	});
+}
+
+#[test]
+fn test_transfer_overflow() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(3), Some(U256::max_value()));
+
+		assert_noop!(
+			Erc20::transfer(Origin::signed(3), 1, U256::max_value() - U256::from(89)),
+			Error::<Test>::Overflow
 		);
 	});
 }
@@ -131,10 +140,6 @@ fn test_transfer_no_allowance() {
 			Error::<Test>::InsufficientAllowance
 		);
 
-		assert_eq!(Erc20::balance_of(0), None);
-		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
-		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
-
 		assert_eq!(
 			<frame_system::Pallet<Test>>::events()
 				.into_iter()
@@ -144,6 +149,63 @@ fn test_transfer_no_allowance() {
 				owner: 1,
 				spender: 0,
 				amount: U256::from(20)
+			})]
+		);
+	});
+}
+
+#[test]
+fn test_allowance_no_funds() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(0), None);
+		assert_eq!(Erc20::balance_of(1), Some(U256::from(110)));
+		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+
+		assert_ok!(Erc20::approve(Origin::signed(1), 0, U256::from(120)));
+		assert_noop!(
+			Erc20::transfer_from(Origin::signed(0), 1, 0, U256::from(120)),
+			Error::<Test>::InsufficientFunds
+		);
+		assert_noop!(
+			Erc20::transfer_from(Origin::signed(0), 1, 2, U256::from(111)),
+			Error::<Test>::InsufficientFunds
+		);
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![mock::Event::from(crate::Event::Approval {
+				owner: 1,
+				spender: 0,
+				amount: U256::from(120)
+			})]
+		);
+	});
+}
+
+#[test]
+fn test_allowance_overflow() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(2), Some(U256::from(90)));
+		assert_eq!(Erc20::balance_of(3), Some(U256::max_value()));
+
+		assert_ok!(Erc20::approve(Origin::signed(3), 0, U256::max_value()));
+		assert_noop!(
+			Erc20::transfer_from(Origin::signed(0), 3, 2, U256::max_value()),
+			Error::<Test>::Overflow
+		);
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![mock::Event::from(crate::Event::Approval {
+				owner: 3,
+				spender: 0,
+				amount: U256::max_value()
 			})]
 		);
 	});
