@@ -113,14 +113,14 @@ pub mod pallet {
 		/// Some amount of tokens is introduced into the system
 		Mint {
 			/// Account which gets the tokens
-			to: T::AccountId,
+			account: T::AccountId,
 			/// Amount of tokens minted
 			amount: U256,
 		},
 		/// Some amount of tokens is destroyed
 		Burn {
 			/// Account from which the tokens are burnt
-			from: T::AccountId,
+			account: T::AccountId,
 			/// Amount of destroyed tokens
 			amount: U256,
 		},
@@ -135,6 +135,8 @@ pub mod pallet {
 		InsufficientFunds,
 		/// "spender" account has insufficient allowance to perform the transfer
 		InsufficientAllowance,
+		/// An account has less tokens that were requested to be burnt
+		BurnExceedsBalance,
 	}
 
 	// private (non-dispatchable) functions
@@ -176,6 +178,38 @@ pub mod pallet {
 			<Allowance<T>>::insert(&owner, &spender, amount);
 
 			Self::deposit_event(Event::Approval { owner, spender, amount });
+
+			Ok(())
+		}
+	}
+
+	// non-dispatchable functions, but other pallets can call them
+	impl<T: Config> Pallet<T> {
+		pub fn mint(account: T::AccountId, amount: U256) -> DispatchResult {
+			let total_supply = <TotalSupply<T>>::get().unwrap_or(U256::zero());
+			let balance = <Balance<T>>::get(&account).unwrap_or(U256::zero());
+
+			let total_supply = total_supply.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+			let balance = balance.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+
+			<TotalSupply<T>>::put(total_supply);
+			<Balance<T>>::insert(&account, balance);
+
+			Self::deposit_event(Event::Mint { account, amount });
+
+			Ok(())
+		}
+		pub fn burn(account: T::AccountId, amount: U256) -> DispatchResult {
+			let total_supply = <TotalSupply<T>>::get().unwrap_or(U256::zero());
+			let balance = <Balance<T>>::get(&account).unwrap_or(U256::zero());
+
+			let total_supply = total_supply.checked_sub(amount).ok_or(Error::<T>::Overflow)?;
+			let balance = balance.checked_sub(amount).ok_or(Error::<T>::BurnExceedsBalance)?;
+
+			<TotalSupply<T>>::put(total_supply);
+			<Balance<T>>::insert(&account, balance);
+
+			Self::deposit_event(Event::Burn { account, amount });
 
 			Ok(())
 		}

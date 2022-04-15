@@ -216,3 +216,107 @@ fn test_unlimited_allowance() {
 		);
 	});
 }
+
+#[test]
+fn test_mint() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+		assert_eq!(Erc20::total_supply(), Some(200.into()));
+
+		assert_ok!(Erc20::mint(1, 100.into()));
+
+		assert_eq!(Erc20::balance_of(1), Some(210.into()));
+		assert_eq!(Erc20::total_supply(), Some(300.into()));
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![mock::Event::from(crate::Event::Mint { account: 1, amount: 100.into() })]
+		);
+	});
+}
+
+#[test]
+fn test_mint_overflow() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+		assert_eq!(Erc20::total_supply(), Some(200.into()));
+
+		assert_noop!(Erc20::mint(1, U256::max_value()), Error::<Test>::Overflow);
+		assert_noop!(Erc20::mint(1, U256::max_value() - U256::from(110)), Error::<Test>::Overflow);
+		assert_ok!(Erc20::mint(1, U256::max_value() - U256::from(200)));
+
+		assert_eq!(Erc20::balance_of(1), Some(U256::max_value() - U256::from(90)));
+		assert_eq!(Erc20::total_supply(), Some(U256::max_value()));
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![mock::Event::from(crate::Event::Mint {
+				account: 1,
+				amount: U256::max_value() - U256::from(200)
+			})]
+		);
+	});
+}
+
+#[test]
+fn test_burn() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+		assert_eq!(Erc20::total_supply(), Some(200.into()));
+
+		assert_ok!(Erc20::burn(1, 100.into()));
+
+		assert_eq!(Erc20::balance_of(1), Some(10.into()));
+		assert_eq!(Erc20::total_supply(), Some(100.into()));
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![mock::Event::from(crate::Event::Burn { account: 1, amount: 100.into() })]
+		);
+	});
+}
+
+#[test]
+fn test_burn_no_balance() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(1), Some(110.into()));
+		assert_eq!(Erc20::total_supply(), Some(200.into()));
+
+		assert_noop!(Erc20::burn(1, 200.into()), Error::<Test>::BurnExceedsBalance);
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![]
+		);
+	});
+}
+
+#[test]
+fn test_burn_overflow() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Erc20::balance_of(3), Some(U256::max_value()));
+		assert_eq!(Erc20::total_supply(), Some(200.into()));
+
+		assert_noop!(Erc20::burn(3, 300.into()), Error::<Test>::Overflow);
+
+		assert_eq!(
+			<frame_system::Pallet<Test>>::events()
+				.into_iter()
+				.map(|ev| ev.event)
+				.collect::<Vec<_>>(),
+			vec![]
+		);
+	});
+}
