@@ -185,6 +185,8 @@ pub mod pallet {
 
 	// non-dispatchable functions, but other pallets can call them
 	impl<T: Config> Pallet<T> {
+		/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+		/// Emits a `Mint` event
 		pub fn mint(account: T::AccountId, amount: U256) -> DispatchResult {
 			let total_supply = <TotalSupply<T>>::get().unwrap_or(U256::zero());
 			let balance = <Balance<T>>::get(&account).unwrap_or(U256::zero());
@@ -199,6 +201,8 @@ pub mod pallet {
 
 			Ok(())
 		}
+		/// Destroys `amount` tokens from `account`, reducing the total supply.
+		/// Emits a `Burn` event
 		pub fn burn(account: T::AccountId, amount: U256) -> DispatchResult {
 			let total_supply = <TotalSupply<T>>::get().unwrap_or(U256::zero());
 			let balance = <Balance<T>>::get(&account).unwrap_or(U256::zero());
